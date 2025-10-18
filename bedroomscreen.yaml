@@ -36,9 +36,15 @@ time:
 
 # define font to display words
 font:
-  - file: 'fonts/FiraSans-SemiBold.ttf'
-    id: FiraSansSB90
-    size: 90
+  - file: 'fonts/GothamRnd-Bold.ttf'
+    id: GothamRndBold75
+    size: 75
+  - file: 'fonts/GothamRnd-Bold.ttf'
+    id: GothamRndBold45
+    size: 45
+  - file: 'fonts/GothamRnd-Bold.ttf'
+    id: GothamRndBold30
+    size: 30
   - file: 'fonts/FiraSans-SemiBold.ttf'
     id: FiraSansSB25
     size: 25
@@ -50,7 +56,7 @@ font:
     size: 40
   - file: 'fonts/Literata-Medium.ttf'
     id: LiterataMedium25
-    size: 25
+    size: 28
   - file: 'fonts/Roboto-Medium.ttf'
     id: font_small
     size: 20
@@ -94,8 +100,30 @@ font:
       "󰖎", # Water Percent
     ]
   - file: 'fonts/materialdesignicons-webfont.ttf'
-    id: icon_font_90
-    size: 90
+    id: icon_font_41
+    size: 40
+    glyphs: [
+      "󱊦", # battery_high
+      "󰗱", # EV charghing station
+      "󰥕", # Clock!
+      "󰁾", # Battery 50
+      "󰭬", # Electric car
+      "󰂄", # Battery charging
+      "󱰻", # charge plug battery
+      "󱧥", # Battery Clock
+      "󰣰", # Map Distance
+      "󰖝", # Windy
+      "󰸃", # Temp High
+      "󰸂", # Temp Low
+      "󰖎", # Water Percent
+      "󱔚", # ev-plug-ccs2
+      "󰉁", # Electric Flash
+      "󱩘", # Electric Meter
+      "󱌤", # Oil Tank Level
+    ]
+  - file: 'fonts/materialdesignicons-webfont.ttf'
+    id: icon_font_85
+    size: 75
     glyphs: [
       "󱊦", # battery_high
       "󰗱", # EV charghing station
@@ -131,10 +159,20 @@ sensor:
   - platform: homeassistant
     name: "Remaining Range"
     id: ix1_batt_range
-    entity_id: sensor.forecast_electric_range_during_charging
-    filters:
-      - lambda: return x * 0.621371;
+    entity_id: sensor.ix1_xdrive30_last_sent_remaining_range
 
+  - platform: template
+    name: "Distance (miles)"
+    id: ix1_batt_range_mi
+    unit_of_measurement: "mi"
+    accuracy_decimals: 2
+    update_interval: 60s
+    lambda: |-
+      if (id(ix1_batt_range).has_state()) {
+        return id(ix1_batt_range).state * 0.621371;
+      } else {
+        return NAN;
+      }
   - platform: homeassistant
     name: "Probability Rain"
     id: precipitation_probability
@@ -168,31 +206,29 @@ text_sensor:
     id: ix1_charging
     name: "Charging status"
 
-v
+  - platform: homeassistant
+    name: "Charging Connector Status"
+    entity_id: sensor.ix1_xdrive30_charging_connector_status
+    id: ix1_chargeing_connector_status
+
+
   - platform: template
     name: "Formatted Charging Status"
     id: formatted_charging_status
     icon: mdi:ev-station
-    update_interval: 1s
+    update_interval: 60s
     lambda: |-
-      if (id(sensor.charging_status).state == "NOCHARGING") {
+      if (id(ix1_charging).state == "NOCHARGING") {
         return {"Not Charging !"};
-      } else if (id(sensor.charging_status).state == "CHARGINGPAUSED") {
+      } else if (id(ix1_charging).state == "CHARGINGPAUSED") {
         return {"Paused"};
-      } else if (id(sensor.charging_status).state == "CHARGINGACTIVE") {
+      } else if (id(ix1_charging).state == "CHARGINGACTIVE") {
         return {"Active"};
-      } else if (id(sensor.charging_status).state == "CHARGINGENDED") {
+      } else if (id(ix1_charging).state == "CHARGINGENDED") {
         return {"Finished"};
       } else {
         return {"Unknown"};
       }
-
-  - platform: homeassistant
-    name: "Charging Connector Status"
-    id: ix1_chargeing_connector_status
-    entity_id: sensor.ix1_xdrive30_charging_connector_status
-
-
 
   - platform: homeassistant
     entity_id: select.octopus_energy_a_b50b9dad_intelligent_target_time
@@ -210,11 +246,6 @@ v
     name: "Forecast Today"
   
 
-binary_sensor:
-  - platform: homeassistant
-    entity_id: binary_sensor.ix1_xdrive30_connection_status
-    name: "Connection status Text"
-    id: ix1_connection
   
 # define SPI interface
 spi:
@@ -234,61 +265,53 @@ display:
     full_update_every: 720
     auto_clear_enabled: true
     lambda: |-
-      it.strftime(25, 0, id(LiterataBold40), TextAlign::TOP_LEFT, "%H:%M : %D", id(ha_time).now());
+      it.strftime(20, 0, id(GothamRndBold45), TextAlign::TOP_LEFT, "%H:%M : %d/%m/%y         %A", id(ha_time).now());
       it.filled_rectangle(395, 0, 5, 480 );
-      it.printf(405, 5, id(icon_font_40), "󰁾");
-      it.printf(445, 5, id(robot_medum20), "iX1 Remaining Battery: %.1f%%", id(ix1_batt_percent).state);
-      it.printf(405, 40, id(icon_font_40), "󰁾");
-      it.printf(445, 40, id(robot_medum20), "iX1 Remaining Range: %.1fmi", id(ix1_batt_range).state);
-      it.printf(405, 80, id(icon_font_40), "󰗱");
-      it.printf(445, 80, id(robot_medum20), "iX1 Status: %s", id(formatted_charging_status).state.c_str());
-      it.printf(405, 120, id(robot_medum20), "iX1 Connection: %s", id(ix1_chargeing_connector_status).state.c_str());
-      it.printf(405, 160, id(icon_font_40), "󰂄");
-      it.printf(445, 160, id(robot_medum20), "BMW Charge Target: %.1f%%", id(ix1_bmw_target).state);
-      it.printf(405, 200, id(icon_font_40), "󱊦");
-      it.printf(445, 200, id(robot_medum20), "Octopus Charge Target: %.1f%%", id(ix1_oct_target).state);
-      it.printf(405, 240, id(icon_font_40), "󱰻");
-      if (id(ix1_int_state).state == "SMART_CONTROL_NOT_AVAILABLE") {
-          it.printf(445, 240, id(robot_medum20), "Intelligent Charge: Not Available");
-      } else if (id(ix1_int_state).state == "SMART_CONTROL_CAPABLE") {
-        it.printf(445, 240, id(robot_medum20), "Intelligent Charge: Capable");
-      } else {
-        it.printf(445, 240, id(robot_medum20), "Intelligent Charge: In Progress");
-      }
-      it.printf(405, 280, id(icon_font_40), "󱧥");
-      it.printf(445, 280, id(robot_medum20), "Target Time: %s", id(ix1_target_time).state.c_str());
       #
       if (id(forecast_today_condition).state == "partlycloudy") {
-          it.printf(5, 62, id(icon_font_70), "󰖕");
-          it.printf(82, 50, id(robot_medum20), "Weather Today: Partly Cloudy");
+          it.printf(5, 115, id(icon_font_70), "󰖕");
+          it.printf(20, 75, id(GothamRndBold30), "Weather Today: Partly Cloudy");
       } else if (id(forecast_today_condition).state == "cloudy") {
-        it.printf(5, 62, id(icon_font_70), "󰖐");
-        it.printf(82, 50, id(robot_medum20), "Weather Today:  Cloudy");
+        it.printf(5,115, id(icon_font_70), "󰖐");
+        it.printf(20, 75, id(GothamRndBold30), "Weather Today:  Cloudy");
       } else if (id(forecast_today_condition).state == "sunny") {
-        it.printf(5, 62, id(icon_font_70), "󰖙");
-        it.printf(82, 50, id(robot_medum20), "Weather Today:  Sunny");
+        it.printf(5, 115, id(icon_font_70), "󰖙");
+        it.printf(20, 75, id(GothamRndBold30), "Weather Today:  Sunny");
       } else if (id(forecast_today_condition).state == "windy") {
-        it.printf(5,62, id(icon_font_70), "󰖝");
-        it.printf(82, 50, id(robot_medum20), "Weather Today:  Windy");
+        it.printf(5,115, id(icon_font_70), "󰖝");
+        it.printf(20, 75, id(GothamRndBold30), "Weather Today:  Windy");
       } else if (id(forecast_today_condition).state == "rainy") {
-        it.printf(5, 62, id(icon_font_70), "󰖗");
-        it.printf(82, 50, id(robot_medum20), "Weather Today:  Rainy");
+        it.printf(5, 115, id(icon_font_70), "󰖗");
+        it.printf(20, 75, id(GothamRndBold30), "Weather Today:  Rainy");
       } else if (id(forecast_today_condition).state == "cloudy") {
-        it.printf(5, 62, id(icon_font_70), "󰖐");
-        it.printf(82, 50, id(robot_medum20), "Weather Today:  Cloudy");
+        it.printf(5, 115, id(icon_font_70), "󰖐");
+        it.printf(20, 75, id(GothamRndBold30), "Weather Today:  Cloudy");
       }
-      it.printf(120, 90, id(icon_font_40), "󰸃"); 
-      it.printf(160, 90, id(robot_medum20), "%.1f°C", id(today_temperature).state);
-      it.printf(120, 130, id(icon_font_40), "󰸂");
-      it.printf(160, 130, id(robot_medum20), "%.1f°C", id(low_temperature).state); 
-      it.printf(250, 90, id(icon_font_40), "󰖎");
-      it.printf(290, 90, id(robot_medum20), "%.1f%%", id(precipitation_probability).state);
-      it.printf(250, 130, id(icon_font_40), "󰖝");
-      it.printf(290, 130, id(robot_medum20), "%.1fmph", id(wind_speed).state);
+      it.printf(110, 125, id(icon_font_40), "󰸃"); 
+      it.printf(150, 125, id(GothamRndBold30), "%.1f°c", id(today_temperature).state);
+      it.printf(110, 165, id(icon_font_40), "󰸂");
+      it.printf(150, 165, id(GothamRndBold30), "%.1f°c", id(low_temperature).state); 
+      it.printf(244, 125, id(icon_font_40), "󰖎");
+      it.printf(280, 125, id(GothamRndBold30), "%.1f%%", id(precipitation_probability).state);
+      it.printf(244, 165, id(icon_font_40), "󰖝");
+      it.printf(280, 165, id(GothamRndBold30), "%.0fmph", id(wind_speed).state);
+      #
+      it.printf(50, 240, id(GothamRndBold30), "Unit Cost:%.2f £/kW", id(elec_cost).state);
+      it.printf(10, 240, id(icon_font_41), "󰉁");
+      it.printf(50, 290, id(GothamRndBold30), "Today Cost:%.2f £/kW", id(elec_cost).state);
+      it.printf(10, 290, id(icon_font_41), "󱔚");
+      it.printf(50, 330, id(GothamRndBold30), "Oil Tank:%.2f Full", id(elec_cost).state);
+      it.printf(10, 330, id(icon_font_41), "󱔚");
+      #
+      it.printf(445, 80, id(GothamRndBold30), "iX1: %s", id(ix1_chargeing_connector_status).state.c_str());
+      it.printf(405, 80, id(icon_font_41), "󱔚");
+      #
+      it.printf(405, 310, id(icon_font_85), "󰣰");
+      it.printf(475, 310, id(GothamRndBold75), " %.1fmi", id(ix1_batt_range_mi).state);
+      
+      it.printf(405, 390, id(icon_font_85), "󰁾");
+      it.printf(475, 390, id(GothamRndBold75), " %.1f%%", id(ix1_batt_percent).state);
 
-      it.printf(10, 200, id(LiterataMedium25), "Electric Unit Cost:%.2f£/kWh", id(elec_cost).state);
-      it.printf(10, 250, id(icon_font_90), "󰁾");
-      it.printf(100, 250, id(FiraSansSB90), " %.1f%%", id(ix1_batt_percent).state);
 
 
       
